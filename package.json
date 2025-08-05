@@ -1,0 +1,27 @@
+{
+  "name": "postgres-driver-ts",
+  "version": "0.0.1",
+  "description": "A TypeScript library for PostgreSQL database interaction",
+  "main": "driver.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/driver.js"
+  },
+  "keywords": [
+    "node",
+    "library",
+    "module"
+  ],
+  "author": "Kretts",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.2.0"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "type": "module",
+  "dependencies": {
+    "typescript": "^5.9.2"
+  }
+}
