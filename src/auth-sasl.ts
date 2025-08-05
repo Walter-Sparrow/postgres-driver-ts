@@ -93,13 +93,18 @@ export function parseSASLContinueMessage(
   };
 }
 
+interface SASLResponse {
+  payload: Buffer;
+  signature: Buffer;
+}
+
 const comma = Buffer.from(",");
 export function createSASLResponse(
   serverResponse: AuthenticationSASLContinuePayload,
   password: string,
   clientFirstMessageBare: Buffer,
   serverFirstMessage: Buffer
-): Buffer {
+): SASLResponse {
   const { nonce, salt: saltBase64, iterations } = serverResponse;
   const salt = Buffer.from(saltBase64, "base64");
 
@@ -148,5 +153,21 @@ export function createSASLResponse(
 
   finalMessageBuffer.copy(buffer, offset);
 
-  return buffer;
+  const serverKey = createHmac("sha256", saltedPassword)
+    .update("Server Key")
+    .digest();
+  const serverSignature = createHmac("sha256", serverKey)
+    .update(authMessage)
+    .digest("base64");
+
+  return {
+    payload: buffer,
+    signature: Buffer.from(serverSignature),
+  };
+}
+
+export function parseSASLFinalMessage(data: Buffer): Buffer {
+  const offset = data.indexOf("v=") + 2;
+  const end = data.lastIndexOf("=") + 1;
+  return data.subarray(offset, end);
 }

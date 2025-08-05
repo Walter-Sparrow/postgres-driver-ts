@@ -2,6 +2,7 @@ import {
   createSASLInitialResponse,
   createSASLResponse,
   parseSASLContinueMessage,
+  parseSASLFinalMessage,
 } from "./auth-sasl.js";
 import {
   AuthenticationSASLMechanism,
@@ -13,11 +14,12 @@ import net from "node:net";
 
 let clientNonce: string | null = null;
 let clientFirstMessageBare: Buffer | null = null;
+let serverSignature: Buffer | null = null;
 
 const client = net.createConnection({ port: 5432 }, () => {
   const startupMessage = createStartupMessage({
-    user: "postgres",
-    database: "test",
+    user: process.env.USER || "postgres",
+    database: process.env.DATABASE || "postgres",
   });
   client.write(startupMessage);
 });
@@ -63,20 +65,34 @@ client.on("data", (data) => {
         clientNonce = null;
         const response = createSASLResponse(
           payload,
-          "password", // Replace with actual password
+          process.env.PASS || "",
           clientFirstMessageBare,
           authenticationMessage.scramPayload
         );
-        client.write(response);
+        serverSignature = response.signature;
+        client.write(response.payload);
       }
       break;
     case ServerAuthenticationMessageType.AuthenticationSASLFinal:
       {
-        console.log(
-          "SASL authentication final message received",
-          authenticationMessage.scramPayload.toString("utf-8")
+        if (!serverSignature) {
+          throw new Error("Server signature is not set for SASL final message");
+        }
+
+        const payload = parseSASLFinalMessage(
+          authenticationMessage.scramPayload
         );
-        // Handle final SASL message if needed
+
+        if (!payload.equals(serverSignature)) {
+          throw new Error(
+            "Server signature does not match expected signature, expected: " +
+              serverSignature.toString("utf8") +
+              ", got: " +
+              payload.toString("utf8")
+          );
+        }
+
+        serverSignature = null;
       }
       break;
   }
