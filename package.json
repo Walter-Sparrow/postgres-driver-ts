@@ -5,7 +5,8 @@
   "main": "driver.ts",
   "scripts": {
     "build": "tsc",
-    "start": "node --env-file=.env dist/driver.js"
+    "start": "node --env-file=.env dist/src/driver.js",
+    "test": "tsc && node --test \"dist/test/*.test.js\""
   },
   "keywords": [
     "node",

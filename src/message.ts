@@ -9,9 +9,7 @@ interface StartupMessagePayload {
   database: string;
 }
 
-export function createStartupMessage(
-  options: StartupMessagePayload
-): Uint8Array {
+export function createStartupMessage(options: StartupMessagePayload): Buffer {
   const paramBuffer = Buffer.concat(
     Object.entries(options).map(([key, value]) => {
       const keyBuffer = Buffer.from(key + "\0", "utf8");
