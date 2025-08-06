@@ -1,3 +1,4 @@
+import { createPasswordMessage } from "./auth-md5.js";
 import {
   createSASLInitialResponse,
   createSASLResponse,
@@ -12,23 +13,28 @@ import {
 import { createStartupMessage } from "./message.js";
 import net from "node:net";
 
+const user = process.env.USER || "postgres";
+
 let clientNonce: string | null = null;
 let clientFirstMessageBare: Buffer | null = null;
 let serverSignature: Buffer | null = null;
 
-const client = net.createConnection({ port: 5432 }, () => {
+const client = net.createConnection({ port: 5432, noDelay: true }, () => {
   const startupMessage = createStartupMessage({
-    user: process.env.USER || "postgres",
+    user,
     database: process.env.DATABASE || "postgres",
   });
   client.write(startupMessage);
 });
 
 client.on("data", (data) => {
-  console.log("Received data from server:", data.toString());
+  console.log("Received data from server:", data.toString("utf8"));
 
   const authenticationMessage = parseAuthenticationMessage(data);
   switch (authenticationMessage.type) {
+    case ServerAuthenticationMessageType.AuthenticationOk:
+      console.log("Authentication successful");
+      break;
     case ServerAuthenticationMessageType.AuthenticationSASL:
       {
         console.log(
@@ -37,7 +43,7 @@ client.on("data", (data) => {
         );
 
         const { payload, nonce, base } = createSASLInitialResponse(
-          "postgres",
+          user,
           AuthenticationSASLMechanism.SCRAM_SHA_256
         );
         clientNonce = nonce;
@@ -80,7 +86,8 @@ client.on("data", (data) => {
         }
 
         const payload = parseSASLFinalMessage(
-          authenticationMessage.scramPayload
+          authenticationMessage.scramPayload,
+          authenticationMessage.length
         );
 
         if (!payload.equals(serverSignature)) {
@@ -95,6 +102,12 @@ client.on("data", (data) => {
         serverSignature = null;
       }
       break;
+    case ServerAuthenticationMessageType.AuthenticationMD5Password: {
+      const salt = authenticationMessage.salt;
+      const password = process.env.PASS || "";
+      const passwordMessage = createPasswordMessage(user, password, salt);
+      client.write(passwordMessage);
+    }
   }
 });
 

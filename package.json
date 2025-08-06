@@ -5,7 +5,8 @@
   "main": "driver.ts",
   "scripts": {
     "build": "tsc",
-    "start": "node --env-file=.env dist/src/driver.js",
+    "start.md5": "node --env-file=.env.auth-md5 dist/src/driver.js",
+    "start.scram": "node --env-file=.env.auth-scram dist/src/driver.js",
     "test": "tsc && node --test \"dist/test/*.test.js\""
   },
   "keywords": [

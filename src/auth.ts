@@ -47,13 +47,20 @@ export interface AuthenticationSASLContinue {
 export interface AuthenticationSASLFinal {
   type: ServerAuthenticationMessageType.AuthenticationSASLFinal;
   scramPayload: Buffer;
+  length: number;
+}
+
+export interface AuthenticationMD5Password {
+  type: ServerAuthenticationMessageType.AuthenticationMD5Password;
+  salt: Buffer;
 }
 
 export type ServerAuthenticationMessage =
   | AuthenticationOk
   | AuthenticationSASL
   | AuthenticationSASLContinue
-  | AuthenticationSASLFinal;
+  | AuthenticationSASLFinal
+  | AuthenticationMD5Password;
 
 export function parseAuthenticationMessage(
   data: Buffer
@@ -65,7 +72,7 @@ export function parseAuthenticationMessage(
     throw new Error(`Expected Authentication message, got type ${messageType}`);
   }
 
-  data.readUInt32BE(offset); // Read the length of the message
+  const length = data.readUInt32BE(offset);
   offset += 4;
 
   const type = data.readUInt32BE(offset);
@@ -95,7 +102,14 @@ export function parseAuthenticationMessage(
       const finalPayload = data.subarray(offset);
       return {
         type: ServerAuthenticationMessageType.AuthenticationSASLFinal,
+        length,
         scramPayload: finalPayload,
+      };
+    case ServerAuthenticationMessageType.AuthenticationMD5Password:
+      const salt = data.subarray(offset, offset + 4);
+      return {
+        type: ServerAuthenticationMessageType.AuthenticationMD5Password,
+        salt,
       };
     default:
       throw new Error(`Unknown authentication message type: ${type}`);

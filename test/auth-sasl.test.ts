@@ -49,8 +49,8 @@ describe("parseSASLContinueMessage", () => {
 
 describe("parseSASLFinalMessage", () => {
   it("should parse the payload correctly", () => {
-    const payload = Buffer.from("v=signature=", "utf8");
-    const result = parseSASLFinalMessage(payload);
+    const payload = Buffer.from("v=signature=\0", "utf8");
+    const result = parseSASLFinalMessage(payload, payload.length);
     assert.equal(result.toString("utf8"), "signature=");
   });
 });
