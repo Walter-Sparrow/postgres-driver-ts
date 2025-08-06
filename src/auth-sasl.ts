@@ -166,8 +166,6 @@ export function createSASLResponse(
   };
 }
 
-export function parseSASLFinalMessage(data: Buffer, length: number): Buffer {
-  const offset = data.indexOf("v=") + 2;
-  const end = data.lastIndexOf("=") + 1;
-  return data.subarray(offset, end);
+export function parseSASLFinalMessage(data: Buffer): Buffer {
+  return data.subarray(2 /* v= */);
 }

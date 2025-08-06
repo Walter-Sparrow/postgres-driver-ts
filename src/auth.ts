@@ -1,4 +1,13 @@
-import { MessageType } from "./message.js";
+import { Socket } from "node:net";
+import { PgMessage } from "./message.js";
+import { Reader } from "./reader.js";
+import { createPasswordMessage } from "./auth-md5.js";
+import {
+  createSASLInitialResponse,
+  parseSASLContinueMessage,
+  createSASLResponse,
+  parseSASLFinalMessage,
+} from "./auth-sasl.js";
 
 export enum ServerAuthenticationMessageType {
   AuthenticationOk = 0,
@@ -63,27 +72,18 @@ export type ServerAuthenticationMessage =
   | AuthenticationMD5Password;
 
 export function parseAuthenticationMessage(
-  data: Buffer
+  pgMsg: PgMessage
 ): ServerAuthenticationMessage {
-  let offset = 0;
-  const messageType = data.readUInt8(offset);
-  offset += 1;
-  if (messageType !== MessageType.Authentication) {
-    throw new Error(`Expected Authentication message, got type ${messageType}`);
-  }
-
-  const length = data.readUInt32BE(offset);
-  offset += 4;
-
-  const type = data.readUInt32BE(offset);
-  offset += 4;
+  const reader = new Reader(pgMsg.data);
+  const type = reader.readUInt32BE();
 
   switch (type) {
     case ServerAuthenticationMessageType.AuthenticationOk:
       return { type: ServerAuthenticationMessageType.AuthenticationOk };
     case ServerAuthenticationMessageType.AuthenticationSASL:
-      const mechanisms = data
-        .toString("utf8", offset)
+      const mechanisms = reader
+        .readRemaining()
+        .toString("utf8")
         .split("\0")
         .map((m) => m.trim())
         .map(toAuthenticationSASLMechanism)
@@ -93,25 +93,103 @@ export function parseAuthenticationMessage(
         mechanisms,
       };
     case ServerAuthenticationMessageType.AuthenticationSASLContinue:
-      const scramPayload = data.subarray(offset);
+      const scramPayload = reader.readRemaining();
       return {
         type: ServerAuthenticationMessageType.AuthenticationSASLContinue,
         scramPayload,
       };
     case ServerAuthenticationMessageType.AuthenticationSASLFinal:
-      const finalPayload = data.subarray(offset);
+      const finalPayload = reader.readRemaining();
       return {
         type: ServerAuthenticationMessageType.AuthenticationSASLFinal,
-        length,
+        length: pgMsg.length,
         scramPayload: finalPayload,
       };
     case ServerAuthenticationMessageType.AuthenticationMD5Password:
-      const salt = data.subarray(offset, offset + 4);
+      const salt = reader.read(4);
       return {
         type: ServerAuthenticationMessageType.AuthenticationMD5Password,
         salt,
       };
     default:
       throw new Error(`Unknown authentication message type: ${type}`);
+  }
+}
+
+const user = process.env.USER || "postgres";
+
+let clientNonce: string | null = null;
+let clientFirstMessageBare: Buffer | null = null;
+let serverSignature: Buffer | null = null;
+
+export function handleAuthenticationMessage(pgMsg: PgMessage, client: Socket) {
+  const msg = parseAuthenticationMessage(pgMsg);
+  switch (msg.type) {
+    case ServerAuthenticationMessageType.AuthenticationOk:
+      console.log("Authentication successful");
+      break;
+    case ServerAuthenticationMessageType.AuthenticationSASL:
+      {
+        console.log("Authentication message received:", msg.mechanisms);
+
+        const { payload, nonce, base } = createSASLInitialResponse(
+          user,
+          AuthenticationSASLMechanism.SCRAM_SHA_256
+        );
+        clientNonce = nonce;
+        clientFirstMessageBare = Buffer.from(base, "utf8");
+        client.write(payload);
+      }
+      break;
+    case ServerAuthenticationMessageType.AuthenticationSASLContinue:
+      {
+        if (!clientNonce) {
+          throw new Error("Client nonce is not set for SASL continue message");
+        }
+
+        if (!clientFirstMessageBare) {
+          throw new Error(
+            "Client first message bare is not set for SASL continue"
+          );
+        }
+
+        const payload = parseSASLContinueMessage(msg.scramPayload, clientNonce);
+        const response = createSASLResponse(
+          payload,
+          process.env.PASS || "",
+          clientFirstMessageBare,
+          msg.scramPayload
+        );
+
+        serverSignature = response.signature;
+        clientNonce = null;
+        client.write(response.payload);
+      }
+      break;
+    case ServerAuthenticationMessageType.AuthenticationSASLFinal:
+      {
+        if (!serverSignature) {
+          throw new Error("Server signature is not set for SASL final message");
+        }
+
+        const payload = parseSASLFinalMessage(msg.scramPayload);
+        if (!payload.equals(serverSignature)) {
+          throw new Error(
+            "Server signature does not match expected signature, expected: " +
+              serverSignature.toString("utf8") +
+              ", got: " +
+              payload.toString("utf8")
+          );
+        }
+
+        serverSignature = null;
+      }
+      break;
+    case ServerAuthenticationMessageType.AuthenticationMD5Password: {
+      const salt = msg.salt;
+      const password = process.env.PASS || "";
+      const passwordMessage = createPasswordMessage(user, password, salt);
+      client.write(passwordMessage);
+    }
   }
 }

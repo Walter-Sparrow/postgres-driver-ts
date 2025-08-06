@@ -1,7 +1,33 @@
+import { Socket } from "node:net";
+import { handleAuthenticationMessage } from "./auth.js";
 import { PROTOCOL_VERSION } from "./constants.js";
+import { Reader } from "./reader.js";
+import { Writer } from "./writer.js";
 
 export enum MessageType {
   Authentication = 0x52, // 'R'
+}
+
+export interface PgMessage {
+  type: MessageType;
+  length: number;
+  data: Buffer;
+}
+
+export function parsePgMessage(raw: Buffer): PgMessage {
+  const reader = new Reader(raw);
+  const type = reader.readUInt8();
+  const length = reader.readUInt32BE();
+  const data = reader.read(length - 4 /* length */);
+  return { type, length: length + 1, data };
+}
+
+export function createPgMessage(type: MessageType, data: Buffer): Buffer {
+  const writer = new Writer(data.length + 1 /* type */ + 4 /* length */);
+  writer.writeUInt8(type);
+  writer.writeUInt32BE(data.length);
+  writer.write(data);
+  return writer.getBuffer();
 }
 
 interface StartupMessagePayload {
@@ -18,19 +44,33 @@ export function createStartupMessage(options: StartupMessagePayload): Buffer {
     })
   );
 
-  const length = 4 + 4 + paramBuffer.length + 1; // 4 for message type, 4 for length, and 1 for null terminator
-  const buffer = Buffer.alloc(length);
+  const length =
+    4 /* length */ +
+    4 /* protocol version */ +
+    paramBuffer.length +
+    1; /* null */
+
+  const writer = new Writer(length);
+  writer.writeUInt32BE(length);
+  writer.writeUInt32BE(PROTOCOL_VERSION);
+  writer.write(paramBuffer);
+  writer.writeUInt8(0);
+  return writer.getBuffer();
+}
+
+export function handlePgMessages(data: Buffer, client: Socket) {
   let offset = 0;
-  buffer.writeUInt32BE(length, offset);
-  offset += 4;
+  while (offset < data.length) {
+    const message = parsePgMessage(data.subarray(offset));
 
-  buffer.writeUInt32BE(PROTOCOL_VERSION, 4);
-  offset += 4;
+    switch (message.type) {
+      case MessageType.Authentication:
+        handleAuthenticationMessage(message, client);
+        break;
+      default:
+        console.log("Unknown message type", message.type);
+    }
 
-  paramBuffer.copy(buffer, 8);
-  offset += paramBuffer.length;
-
-  buffer.writeUInt8(0, length - 1);
-
-  return buffer;
+    offset += message.length;
+  }
 }
