@@ -6,6 +6,7 @@ import { Writer } from "./writer.js";
 
 export enum MessageType {
   Authentication = 0x52, // 'R'
+  Password = 0x70, // 'p'
 }
 
 export interface PgMessage {
@@ -25,7 +26,7 @@ export function parsePgMessage(raw: Buffer): PgMessage {
 export function createPgMessage(type: MessageType, data: Buffer): Buffer {
   const writer = new Writer(data.length + 1 /* type */ + 4 /* length */);
   writer.writeUInt8(type);
-  writer.writeUInt32BE(data.length);
+  writer.writeUInt32BE(data.length + 4 /* length */);
   writer.write(data);
   return writer.getBuffer();
 }

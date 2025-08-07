@@ -1,6 +1,7 @@
 import { createHash, createHmac, pbkdf2Sync } from "node:crypto";
 import { AuthenticationSASLMechanism } from "./auth.js";
 import { Writer } from "./writer.js";
+import { createPgMessage, MessageType } from "./message.js";
 
 interface SCRAMInitialResponse {
   payload: Buffer;
@@ -39,19 +40,18 @@ export function createSASLInitialResponse(
   } = createSCRAMInitialResponse(username);
 
   const length =
-    4 /* length */ +
-    Buffer.byteLength(mechanism) +
-    4 /* length */ +
-    initialResponse.length;
+    Buffer.byteLength(mechanism) + 4 /* length */ + initialResponse.length;
 
-  const writer = new Writer(1 + length);
-  writer.writeUInt8("p".charCodeAt(0));
-  writer.writeUInt32BE(length);
+  const writer = new Writer(length);
   writer.write(Buffer.from(mechanism));
   writer.writeUInt32BE(initialResponse.length);
   writer.write(initialResponse);
 
-  return { payload: writer.getBuffer(), nonce, base };
+  return {
+    payload: createPgMessage(MessageType.Password, writer.getBuffer()),
+    nonce,
+    base,
+  };
 }
 
 interface AuthenticationSASLContinuePayload {
@@ -130,13 +130,6 @@ export function createSASLResponse(
   const finalMessage = `c=${channelBinding},r=${nonce},p=${clientProofBase64}`;
   const finalMessageBuffer = Buffer.from(finalMessage, "utf8");
 
-  const totalLength = 4 + finalMessageBuffer.length;
-  const writer = new Writer(1 + totalLength);
-
-  writer.writeUInt8("p".charCodeAt(0));
-  writer.writeUInt32BE(totalLength);
-  writer.write(finalMessageBuffer);
-
   const serverKey = createHmac("sha256", saltedPassword)
     .update("Server Key")
     .digest();
@@ -145,7 +138,7 @@ export function createSASLResponse(
     .digest("base64");
 
   return {
-    payload: writer.getBuffer(),
+    payload: createPgMessage(MessageType.Password, finalMessageBuffer),
     signature: Buffer.from(serverSignature),
   };
 }
