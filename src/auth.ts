@@ -28,15 +28,16 @@ export enum AuthenticationSASLMechanism {
 
 function toAuthenticationSASLMechanism(
   mechanism: string
-): AuthenticationSASLMechanism | null {
-  if (
-    Object.values(AuthenticationSASLMechanism).includes(
-      mechanism as AuthenticationSASLMechanism
-    )
-  ) {
-    return mechanism as AuthenticationSASLMechanism;
+): AuthenticationSASLMechanism | undefined {
+  if (mechanism === AuthenticationSASLMechanism.SCRAM_SHA_256) {
+    return AuthenticationSASLMechanism.SCRAM_SHA_256;
   }
-  return null;
+
+  if (mechanism === AuthenticationSASLMechanism.SCRAM_SHA_256_PLUS) {
+    return AuthenticationSASLMechanism.SCRAM_SHA_256_PLUS;
+  }
+
+  return undefined;
 }
 
 export interface AuthenticationOk {
@@ -81,13 +82,13 @@ export function parseAuthenticationMessage(
     case ServerAuthenticationMessageType.AuthenticationOk:
       return { type: ServerAuthenticationMessageType.AuthenticationOk };
     case ServerAuthenticationMessageType.AuthenticationSASL:
-      const mechanisms = reader
-        .readRemaining()
-        .toString("utf8")
-        .split("\0")
-        .map((m) => m.trim())
-        .map(toAuthenticationSASLMechanism)
-        .filter(Boolean) as AuthenticationSASLMechanism[];
+      const mechanisms: AuthenticationSASLMechanism[] = [];
+      let mechanism = reader.readNullTerminatedString();
+      while (mechanism !== "") {
+        const enumValue = toAuthenticationSASLMechanism(mechanism);
+        if (enumValue) mechanisms.push(enumValue);
+        mechanism = reader.readNullTerminatedString();
+      }
       return {
         type: ServerAuthenticationMessageType.AuthenticationSASL,
         mechanisms,

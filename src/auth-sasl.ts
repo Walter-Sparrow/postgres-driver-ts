@@ -10,7 +10,7 @@ interface SCRAMInitialResponse {
 }
 
 function createSCRAMInitialResponse(username: string): SCRAMInitialResponse {
-  const nonce = new Uint8Array(18);
+  const nonce = Buffer.alloc(18);
   crypto.getRandomValues(nonce);
 
   const nonceString = Buffer.from(nonce).toString("base64");

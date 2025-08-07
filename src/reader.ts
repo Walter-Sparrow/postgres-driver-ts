@@ -29,4 +29,14 @@ export class Reader {
     this.offset += 4;
     return result;
   }
+
+  readNullTerminatedString(): string {
+    let end = this.offset;
+    while (end < this.buffer.length && this.buffer[end] !== 0) {
+      end++;
+    }
+    const str = this.buffer.subarray(this.offset, end + 1).toString("utf8");
+    this.offset = end + 1;
+    return str;
+  }
 }
