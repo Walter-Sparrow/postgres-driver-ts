@@ -1,5 +1,6 @@
 import { createHash, createHmac, pbkdf2Sync } from "node:crypto";
 import { AuthenticationSASLMechanism } from "./auth.js";
+import { Writer } from "./writer.js";
 
 interface SCRAMInitialResponse {
   payload: Buffer;
@@ -37,32 +38,20 @@ export function createSASLInitialResponse(
     base,
   } = createSCRAMInitialResponse(username);
 
-  //           = 4 (length field) + mechanism bytes + 1 (null) + 4 (initialResponse length) + initialResponse bytes
   const length =
-    4 + Buffer.byteLength(mechanism, "utf8") + 1 + 4 + initialResponse.length;
+    4 /* length */ +
+    Buffer.byteLength(mechanism) +
+    4 /* length */ +
+    initialResponse.length;
 
-  const buffer = Buffer.alloc(1 + length);
-  let offset = 0;
+  const writer = new Writer(1 + length);
+  writer.writeUInt8("p".charCodeAt(0));
+  writer.writeUInt32BE(length);
+  writer.write(Buffer.from(mechanism));
+  writer.writeUInt32BE(initialResponse.length);
+  writer.write(initialResponse);
 
-  buffer.write("p", offset, 1, "utf8");
-  offset += 1;
-
-  buffer.writeUInt32BE(length, offset);
-  offset += 4;
-
-  buffer.write(mechanism, offset, "utf8");
-  offset += Buffer.byteLength(mechanism, "utf8");
-
-  buffer.writeUInt8(0, offset);
-  offset += 1;
-
-  buffer.writeUInt32BE(initialResponse.length, offset);
-  offset += 4;
-
-  initialResponse.copy(buffer, offset);
-  offset += initialResponse.length;
-
-  return { payload: buffer, nonce, base };
+  return { payload: writer.getBuffer(), nonce, base };
 }
 
 interface AuthenticationSASLContinuePayload {
@@ -142,16 +131,11 @@ export function createSASLResponse(
   const finalMessageBuffer = Buffer.from(finalMessage, "utf8");
 
   const totalLength = 4 + finalMessageBuffer.length;
-  const buffer = Buffer.alloc(1 + totalLength);
+  const writer = new Writer(1 + totalLength);
 
-  let offset = 0;
-  buffer.writeUInt8("p".charCodeAt(0), offset);
-  offset += 1;
-
-  buffer.writeUInt32BE(totalLength, offset);
-  offset += 4;
-
-  finalMessageBuffer.copy(buffer, offset);
+  writer.writeUInt8("p".charCodeAt(0));
+  writer.writeUInt32BE(totalLength);
+  writer.write(finalMessageBuffer);
 
   const serverKey = createHmac("sha256", saltedPassword)
     .update("Server Key")
@@ -161,7 +145,7 @@ export function createSASLResponse(
     .digest("base64");
 
   return {
-    payload: buffer,
+    payload: writer.getBuffer(),
     signature: Buffer.from(serverSignature),
   };
 }

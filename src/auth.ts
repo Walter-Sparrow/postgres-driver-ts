@@ -22,8 +22,8 @@ export enum ServerAuthenticationMessageType {
 }
 
 export enum AuthenticationSASLMechanism {
-  SCRAM_SHA_256 = "SCRAM-SHA-256",
-  SCRAM_SHA_256_PLUS = "SCRAM-SHA-256-PLUS",
+  SCRAM_SHA_256 = "SCRAM-SHA-256\0",
+  SCRAM_SHA_256_PLUS = "SCRAM-SHA-256-PLUS\0",
 }
 
 function toAuthenticationSASLMechanism(

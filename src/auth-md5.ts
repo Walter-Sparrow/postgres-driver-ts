@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Writer } from "./writer.js";
 
 export function createPasswordMessage(
   user: string,
@@ -16,17 +17,11 @@ export function createPasswordMessage(
   const finalPassword = "md5" + outerHash;
   const passwordBuffer = Buffer.from(finalPassword + "\0", "utf-8");
 
-  const totalLength = 4 + passwordBuffer.length;
-  const buffer = Buffer.alloc(1 + totalLength);
+  const totalLength = 4 /* length */ + passwordBuffer.length;
+  const writer = new Writer(1 /* type */ + totalLength);
+  writer.writeUInt8("p".charCodeAt(0));
+  writer.writeUInt32BE(totalLength);
+  writer.write(passwordBuffer);
 
-  let offset = 0;
-  buffer.writeUInt8("p".charCodeAt(0), offset);
-  offset += 1;
-
-  buffer.writeUInt32BE(totalLength, offset);
-  offset += 4;
-
-  passwordBuffer.copy(buffer, offset);
-
-  return buffer;
+  return writer.getBuffer();
 }
