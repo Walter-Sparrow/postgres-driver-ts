@@ -3,6 +3,7 @@ import { handleAuthenticationMessage } from "./auth.js";
 import { PROTOCOL_VERSION } from "./constants.js";
 import { Reader } from "./reader.js";
 import { Writer } from "./writer.js";
+import { Context } from "./context.js";
 
 export enum MessageType {
   Authentication = 0x52, // 'R'
@@ -59,14 +60,18 @@ export function createStartupMessage(options: StartupMessagePayload): Buffer {
   return writer.getBuffer();
 }
 
-export function handlePgMessages(data: Buffer, client: Socket) {
+export function handlePgMessages(
+  data: Buffer,
+  client: Socket,
+  context: Context
+) {
   let offset = 0;
   while (offset < data.length) {
     const message = parsePgMessage(data.subarray(offset));
 
     switch (message.type) {
       case MessageType.Authentication:
-        handleAuthenticationMessage(message, client);
+        handleAuthenticationMessage(message, context);
         break;
       default:
         console.log("Unknown message type", message.type);

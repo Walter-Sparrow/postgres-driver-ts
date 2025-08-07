@@ -8,6 +8,7 @@ import {
   createSASLResponse,
   parseSASLFinalMessage,
 } from "./auth-sasl.js";
+import { Context } from "./context.js";
 
 export enum ServerAuthenticationMessageType {
   AuthenticationOk = 0,
@@ -117,29 +118,26 @@ export function parseAuthenticationMessage(
   }
 }
 
-const user = process.env.USER || "postgres";
-
-let clientNonce: string | null = null;
-let clientFirstMessageBare: Buffer | null = null;
-let serverSignature: Buffer | null = null;
-
-export function handleAuthenticationMessage(pgMsg: PgMessage, client: Socket) {
+export function handleAuthenticationMessage(
+  pgMsg: PgMessage,
+  context: Context
+) {
   const msg = parseAuthenticationMessage(pgMsg);
   switch (msg.type) {
     case ServerAuthenticationMessageType.AuthenticationOk:
-      handleAuthenticationOkMessage(msg, client);
+      handleAuthenticationOkMessage(msg, context);
       break;
     case ServerAuthenticationMessageType.AuthenticationSASL:
-      handleAuthenticationSASLMessage(msg, client);
+      handleAuthenticationSASLMessage(msg, context);
       break;
     case ServerAuthenticationMessageType.AuthenticationSASLContinue:
-      handleAuthenticationSASLContinueMessage(msg, client);
+      handleAuthenticationSASLContinueMessage(msg, context);
       break;
     case ServerAuthenticationMessageType.AuthenticationSASLFinal:
-      handleAuthenticationSASLFinalMessage(msg, client);
+      handleAuthenticationSASLFinalMessage(msg, context);
       break;
     case ServerAuthenticationMessageType.AuthenticationMD5Password: {
-      handleAuthenticationMD5PasswordMessage(msg, client);
+      handleAuthenticationMD5PasswordMessage(msg, context);
       break;
     }
   }
@@ -147,30 +145,41 @@ export function handleAuthenticationMessage(pgMsg: PgMessage, client: Socket) {
 
 function handleAuthenticationOkMessage(
   _msg: AuthenticationOk,
-  _client: Socket
+  context: Context
 ) {
   console.log("Authentication successful");
+  context.authentication.isConnected = true;
 }
 
 function handleAuthenticationSASLMessage(
   msg: AuthenticationSASL,
-  client: Socket
+  context: Context
 ) {
+  const {
+    client,
+    authentication: { user },
+  } = context;
+
   console.log("Authentication message received:", msg.mechanisms);
 
   const { payload, nonce, base } = createSASLInitialResponse(
     user,
     AuthenticationSASLMechanism.SCRAM_SHA_256
   );
-  clientNonce = nonce;
-  clientFirstMessageBare = Buffer.from(base, "utf8");
+  context.authentication.clientNonce = nonce;
+  context.authentication.clientFirstMessageBare = Buffer.from(base, "utf8");
   client.write(payload);
 }
 
 function handleAuthenticationSASLContinueMessage(
   msg: AuthenticationSASLContinue,
-  client: Socket
+  context: Context
 ) {
+  const {
+    client,
+    authentication: { password, clientNonce, clientFirstMessageBare },
+  } = context;
+
   if (!clientNonce) {
     throw new Error("Client nonce is not set for SASL continue message");
   }
@@ -182,20 +191,22 @@ function handleAuthenticationSASLContinueMessage(
   const payload = parseSASLContinueMessage(msg.scramPayload, clientNonce);
   const response = createSASLResponse(
     payload,
-    process.env.PASS || "",
+    password,
     clientFirstMessageBare,
     msg.scramPayload
   );
 
-  serverSignature = response.signature;
-  clientNonce = null;
+  context.authentication.serverSignature = response.signature;
+  context.authentication.clientNonce = null;
   client.write(response.payload);
 }
 
 function handleAuthenticationSASLFinalMessage(
   msg: AuthenticationSASLFinal,
-  _client: Socket
+  context: Context
 ) {
+  const serverSignature = context.authentication.serverSignature;
+
   if (!serverSignature) {
     throw new Error("Server signature is not set for SASL final message");
   }
@@ -210,15 +221,19 @@ function handleAuthenticationSASLFinalMessage(
     );
   }
 
-  serverSignature = null;
+  context.authentication.serverSignature = null;
 }
 
 function handleAuthenticationMD5PasswordMessage(
   msg: AuthenticationMD5Password,
-  client: Socket
+  context: Context
 ) {
+  const {
+    client,
+    authentication: { user, password },
+  } = context;
+
   const salt = msg.salt;
-  const password = process.env.PASS || "";
   const passwordMessage = createPasswordMessage(user, password, salt);
   client.write(passwordMessage);
 }
