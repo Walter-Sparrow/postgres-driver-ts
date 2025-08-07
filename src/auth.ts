@@ -127,70 +127,98 @@ export function handleAuthenticationMessage(pgMsg: PgMessage, client: Socket) {
   const msg = parseAuthenticationMessage(pgMsg);
   switch (msg.type) {
     case ServerAuthenticationMessageType.AuthenticationOk:
-      console.log("Authentication successful");
+      handleAuthenticationOkMessage(msg, client);
       break;
     case ServerAuthenticationMessageType.AuthenticationSASL:
-      {
-        console.log("Authentication message received:", msg.mechanisms);
-
-        const { payload, nonce, base } = createSASLInitialResponse(
-          user,
-          AuthenticationSASLMechanism.SCRAM_SHA_256
-        );
-        clientNonce = nonce;
-        clientFirstMessageBare = Buffer.from(base, "utf8");
-        client.write(payload);
-      }
+      handleAuthenticationSASLMessage(msg, client);
       break;
     case ServerAuthenticationMessageType.AuthenticationSASLContinue:
-      {
-        if (!clientNonce) {
-          throw new Error("Client nonce is not set for SASL continue message");
-        }
-
-        if (!clientFirstMessageBare) {
-          throw new Error(
-            "Client first message bare is not set for SASL continue"
-          );
-        }
-
-        const payload = parseSASLContinueMessage(msg.scramPayload, clientNonce);
-        const response = createSASLResponse(
-          payload,
-          process.env.PASS || "",
-          clientFirstMessageBare,
-          msg.scramPayload
-        );
-
-        serverSignature = response.signature;
-        clientNonce = null;
-        client.write(response.payload);
-      }
+      handleAuthenticationSASLContinueMessage(msg, client);
       break;
     case ServerAuthenticationMessageType.AuthenticationSASLFinal:
-      {
-        if (!serverSignature) {
-          throw new Error("Server signature is not set for SASL final message");
-        }
-
-        const payload = parseSASLFinalMessage(msg.scramPayload);
-        if (!payload.equals(serverSignature)) {
-          throw new Error(
-            "Server signature does not match expected signature, expected: " +
-              serverSignature.toString("utf8") +
-              ", got: " +
-              payload.toString("utf8")
-          );
-        }
-
-        serverSignature = null;
-      }
+      handleAuthenticationSASLFinalMessage(msg, client);
       break;
     case ServerAuthenticationMessageType.AuthenticationMD5Password: {
-      const salt = msg.salt;
-      const password = process.env.PASS || "";
-      const passwordMessage = createPasswordMessage(user, password, salt);
-      client.write(passwordMessage);
+      handleAuthenticationMD5PasswordMessage(msg, client);
+      break;
     }
   }
+}
+
+function handleAuthenticationOkMessage(
+  _msg: AuthenticationOk,
+  _client: Socket
+) {
+  console.log("Authentication successful");
+}
+
+function handleAuthenticationSASLMessage(
+  msg: AuthenticationSASL,
+  client: Socket
+) {
+  console.log("Authentication message received:", msg.mechanisms);
+
+  const { payload, nonce, base } = createSASLInitialResponse(
+    user,
+    AuthenticationSASLMechanism.SCRAM_SHA_256
+  );
+  clientNonce = nonce;
+  clientFirstMessageBare = Buffer.from(base, "utf8");
+  client.write(payload);
+}
+
+function handleAuthenticationSASLContinueMessage(
+  msg: AuthenticationSASLContinue,
+  client: Socket
+) {
+  if (!clientNonce) {
+    throw new Error("Client nonce is not set for SASL continue message");
+  }
+
+  if (!clientFirstMessageBare) {
+    throw new Error("Client first message bare is not set for SASL continue");
+  }
+
+  const payload = parseSASLContinueMessage(msg.scramPayload, clientNonce);
+  const response = createSASLResponse(
+    payload,
+    process.env.PASS || "",
+    clientFirstMessageBare,
+    msg.scramPayload
+  );
+
+  serverSignature = response.signature;
+  clientNonce = null;
+  client.write(response.payload);
+}
+
+function handleAuthenticationSASLFinalMessage(
+  msg: AuthenticationSASLFinal,
+  _client: Socket
+) {
+  if (!serverSignature) {
+    throw new Error("Server signature is not set for SASL final message");
+  }
+
+  const payload = parseSASLFinalMessage(msg.scramPayload);
+  if (!payload.equals(serverSignature)) {
+    throw new Error(
+      "Server signature does not match expected signature, expected: " +
+        serverSignature.toString("utf8") +
+        ", got: " +
+        payload.toString("utf8")
+    );
+  }
+
+  serverSignature = null;
+}
+
+function handleAuthenticationMD5PasswordMessage(
+  msg: AuthenticationMD5Password,
+  client: Socket
+) {
+  const salt = msg.salt;
+  const password = process.env.PASS || "";
+  const passwordMessage = createPasswordMessage(user, password, salt);
+  client.write(passwordMessage);
 }
