@@ -1,4 +1,3 @@
-import { Socket } from "node:net";
 import { PgMessage } from "./message.js";
 import { Reader } from "./reader.js";
 import { createPasswordMessage } from "./auth-md5.js";

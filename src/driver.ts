@@ -34,6 +34,12 @@ client.on("data", (data) => {
   handlePgMessages(data, context);
 });
 
+client.on("error", () => {
+  context.authentication.isConnected = false;
+  console.log("Connection error");
+});
+
 client.on("end", () => {
-  console.log("disconnected from server");
+  context.authentication.isConnected = false;
+  console.log("Connection closed");
 });

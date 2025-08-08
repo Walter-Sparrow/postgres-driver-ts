@@ -1,4 +1,3 @@
-import { Socket } from "node:net";
 import { handleAuthenticationMessage } from "./auth.js";
 import { PROTOCOL_VERSION } from "./constants.js";
 import { Reader } from "./reader.js";
@@ -7,11 +6,13 @@ import { Context } from "./context.js";
 import { handleParameterStatusMessage } from "./parameter-status.js";
 import { handleBackendKeyDataMessage } from "./backend-key-data.js";
 import { handleReadyForQueryMessage } from "./ready-for-query.js";
+import { handleErrorResponseMessage } from "./error-response.js";
 
 export enum MessageType {
+  ErrorResponse = 69, // 'E'
+  BackendKeyData = 75, // 'K'
   Authentication = 82, // 'R'
   ParameterStatus = 83, // 'S'
-  BackendKeyData = 75, // 'K'
   ReadyForQuery = 90, // 'Z'
   Password = 112, // 'p'
 }
@@ -83,6 +84,9 @@ export function handlePgMessages(data: Buffer, context: Context) {
         break;
       case MessageType.ReadyForQuery:
         handleReadyForQueryMessage(message, context);
+        break;
+      case MessageType.ErrorResponse:
+        handleErrorResponseMessage(message, context);
         break;
       default:
         console.log("Unknown message type", message.type);

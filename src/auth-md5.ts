@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { Writer } from "./writer.js";
 import { createPgMessage, MessageType } from "./message.js";
 
 export function createPasswordMessage(
