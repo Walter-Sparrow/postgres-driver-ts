@@ -1,5 +1,11 @@
 import { Socket } from "node:net";
 
+export enum ReadyForQueryStatus {
+  Idle = "I",
+  InTransaction = "T",
+  InFailedTransaction = "E",
+}
+
 export interface Context {
   client: Socket;
 
@@ -14,4 +20,11 @@ export interface Context {
 
     isConnected: boolean;
   };
+
+  sessionParameters: Record<string, string>;
+  backendKeyData: {
+    processId: number;
+    secretKey: number;
+  };
+  readyForQueryStatus: ReadyForQueryStatus;
 }

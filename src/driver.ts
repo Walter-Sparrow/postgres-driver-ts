@@ -1,4 +1,4 @@
-import { Context } from "./context.js";
+import { Context, ReadyForQueryStatus } from "./context.js";
 import { createStartupMessage, handlePgMessages } from "./message.js";
 import net from "node:net";
 
@@ -14,6 +14,9 @@ const context: Context = {
     database,
     isConnected: false,
   },
+  sessionParameters: {},
+  backendKeyData: { processId: 0, secretKey: 0 },
+  readyForQueryStatus: ReadyForQueryStatus.Idle,
 };
 
 const client = net.createConnection({ port: 5432, noDelay: true }, () => {
@@ -28,7 +31,7 @@ const client = net.createConnection({ port: 5432, noDelay: true }, () => {
 
 client.on("data", (data) => {
   console.log("Received data from server:", data.toString("utf8"));
-  handlePgMessages(data, client, context);
+  handlePgMessages(data, context);
 });
 
 client.on("end", () => {

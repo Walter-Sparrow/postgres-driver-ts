@@ -4,10 +4,16 @@ import { PROTOCOL_VERSION } from "./constants.js";
 import { Reader } from "./reader.js";
 import { Writer } from "./writer.js";
 import { Context } from "./context.js";
+import { handleParameterStatusMessage } from "./parameter-status.js";
+import { handleBackendKeyDataMessage } from "./backend-key-data.js";
+import { handleReadyForQueryMessage } from "./ready-for-query.js";
 
 export enum MessageType {
-  Authentication = 0x52, // 'R'
-  Password = 0x70, // 'p'
+  Authentication = 82, // 'R'
+  ParameterStatus = 83, // 'S'
+  BackendKeyData = 75, // 'K'
+  ReadyForQuery = 90, // 'Z'
+  Password = 112, // 'p'
 }
 
 export interface PgMessage {
@@ -60,11 +66,7 @@ export function createStartupMessage(options: StartupMessagePayload): Buffer {
   return writer.getBuffer();
 }
 
-export function handlePgMessages(
-  data: Buffer,
-  client: Socket,
-  context: Context
-) {
+export function handlePgMessages(data: Buffer, context: Context) {
   let offset = 0;
   while (offset < data.length) {
     const message = parsePgMessage(data.subarray(offset));
@@ -72,6 +74,15 @@ export function handlePgMessages(
     switch (message.type) {
       case MessageType.Authentication:
         handleAuthenticationMessage(message, context);
+        break;
+      case MessageType.ParameterStatus:
+        handleParameterStatusMessage(message, context);
+        break;
+      case MessageType.BackendKeyData:
+        handleBackendKeyDataMessage(message, context);
+        break;
+      case MessageType.ReadyForQuery:
+        handleReadyForQueryMessage(message, context);
         break;
       default:
         console.log("Unknown message type", message.type);
