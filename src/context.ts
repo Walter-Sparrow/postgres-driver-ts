@@ -1,4 +1,5 @@
 import { Socket } from "node:net";
+import { ColumnDescription, RowValue } from "./row-description";
 
 export enum ReadyForQueryStatus {
   Idle = "I",
@@ -27,4 +28,10 @@ export interface Context {
     secretKey: number;
   };
   readyForQueryStatus: ReadyForQueryStatus;
+
+  currentQuery: {
+    columnDescriptions: ColumnDescription[];
+    rows: RowValue[][];
+    commandTag: string;
+  };
 }

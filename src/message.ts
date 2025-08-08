@@ -7,12 +7,21 @@ import { handleParameterStatusMessage } from "./parameter-status.js";
 import { handleBackendKeyDataMessage } from "./backend-key-data.js";
 import { handleReadyForQueryMessage } from "./ready-for-query.js";
 import { handleErrorResponseMessage } from "./error-response.js";
+import {
+  handleDataRowMessage,
+  handleRowDescriptionMessage,
+} from "./row-description.js";
+import { handleCommandCompleteMessage } from "./command-complete.js";
 
 export enum MessageType {
+  CommandComplete = 67, // 'C'
+  DataRow = 68, // 'D'
   ErrorResponse = 69, // 'E'
   BackendKeyData = 75, // 'K'
+  Query = 81, // 'Q'
   Authentication = 82, // 'R'
   ParameterStatus = 83, // 'S'
+  RowDescription = 84, // 'T'
   ReadyForQuery = 90, // 'Z'
   Password = 112, // 'p'
 }
@@ -84,6 +93,15 @@ export function handlePgMessages(data: Buffer, context: Context) {
         break;
       case MessageType.ReadyForQuery:
         handleReadyForQueryMessage(message, context);
+        break;
+      case MessageType.RowDescription:
+        handleRowDescriptionMessage(message, context);
+        break;
+      case MessageType.DataRow:
+        handleDataRowMessage(message, context);
+        break;
+      case MessageType.CommandComplete:
+        handleCommandCompleteMessage(message, context);
         break;
       case MessageType.ErrorResponse:
         handleErrorResponseMessage(message, context);

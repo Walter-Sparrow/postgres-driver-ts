@@ -24,6 +24,18 @@ export class Reader {
     return result;
   }
 
+  readUInt16BE(): number {
+    const result = this.buffer.readUInt16BE(this.offset);
+    this.offset += 2;
+    return result;
+  }
+
+  readInt32BE(): number {
+    const result = this.buffer.readInt32BE(this.offset);
+    this.offset += 4;
+    return result;
+  }
+
   readUInt32BE(): number {
     const result = this.buffer.readUInt32BE(this.offset);
     this.offset += 4;

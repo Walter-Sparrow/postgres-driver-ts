@@ -17,6 +17,7 @@ const context: Context = {
   sessionParameters: {},
   backendKeyData: { processId: 0, secretKey: 0 },
   readyForQueryStatus: ReadyForQueryStatus.Idle,
+  currentQuery: { columnDescriptions: [], rows: [], commandTag: "" },
 };
 
 const client = net.createConnection({ port: 5432, noDelay: true }, () => {
