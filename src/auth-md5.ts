@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createPgMessage, MessageType } from "./message.js";
+import { createPgMessage, FrontendMessageType } from "./message.js";
 
 export function createPasswordMessage(
   user: string,
@@ -17,5 +17,5 @@ export function createPasswordMessage(
   const finalPassword = "md5" + outerHash;
   const passwordBuffer = Buffer.from(finalPassword + "\0", "utf-8");
 
-  return createPgMessage(MessageType.Password, passwordBuffer);
+  return createPgMessage(FrontendMessageType.Password, passwordBuffer);
 }

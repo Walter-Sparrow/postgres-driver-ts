@@ -13,18 +13,23 @@ import {
 } from "./row-description.js";
 import { handleCommandCompleteMessage } from "./command-complete.js";
 
-export enum MessageType {
+export enum BackendMessageType {
   CommandComplete = 67, // 'C'
   DataRow = 68, // 'D'
   ErrorResponse = 69, // 'E'
   BackendKeyData = 75, // 'K'
-  Query = 81, // 'Q'
   Authentication = 82, // 'R'
   ParameterStatus = 83, // 'S'
   RowDescription = 84, // 'T'
   ReadyForQuery = 90, // 'Z'
+}
+
+export enum FrontendMessageType {
+  Query = 81, // 'Q'
   Password = 112, // 'p'
 }
+
+export type MessageType = BackendMessageType | FrontendMessageType;
 
 export interface PgMessage {
   type: MessageType;
@@ -82,28 +87,28 @@ export function handlePgMessages(data: Buffer, context: Context) {
     const message = parsePgMessage(data.subarray(offset));
 
     switch (message.type) {
-      case MessageType.Authentication:
+      case BackendMessageType.Authentication:
         handleAuthenticationMessage(message, context);
         break;
-      case MessageType.ParameterStatus:
+      case BackendMessageType.ParameterStatus:
         handleParameterStatusMessage(message, context);
         break;
-      case MessageType.BackendKeyData:
+      case BackendMessageType.BackendKeyData:
         handleBackendKeyDataMessage(message, context);
         break;
-      case MessageType.ReadyForQuery:
+      case BackendMessageType.ReadyForQuery:
         handleReadyForQueryMessage(message, context);
         break;
-      case MessageType.RowDescription:
+      case BackendMessageType.RowDescription:
         handleRowDescriptionMessage(message, context);
         break;
-      case MessageType.DataRow:
+      case BackendMessageType.DataRow:
         handleDataRowMessage(message, context);
         break;
-      case MessageType.CommandComplete:
+      case BackendMessageType.CommandComplete:
         handleCommandCompleteMessage(message, context);
         break;
-      case MessageType.ErrorResponse:
+      case BackendMessageType.ErrorResponse:
         handleErrorResponseMessage(message, context);
         break;
       default:

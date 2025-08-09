@@ -1,7 +1,7 @@
 import { createHash, createHmac, pbkdf2Sync } from "node:crypto";
 import { AuthenticationSASLMechanism } from "./auth.js";
 import { Writer } from "./writer.js";
-import { createPgMessage, MessageType } from "./message.js";
+import { createPgMessage, FrontendMessageType } from "./message.js";
 
 interface SCRAMInitialResponse {
   payload: Buffer;
@@ -48,7 +48,7 @@ export function createSASLInitialResponse(
   writer.write(initialResponse);
 
   return {
-    payload: createPgMessage(MessageType.Password, writer.getBuffer()),
+    payload: createPgMessage(FrontendMessageType.Password, writer.getBuffer()),
     nonce,
     base,
   };
@@ -138,7 +138,7 @@ export function createSASLResponse(
     .digest("base64");
 
   return {
-    payload: createPgMessage(MessageType.Password, finalMessageBuffer),
+    payload: createPgMessage(FrontendMessageType.Password, finalMessageBuffer),
     signature: Buffer.from(serverSignature),
   };
 }
