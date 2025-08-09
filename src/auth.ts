@@ -9,6 +9,8 @@ import {
 } from "./auth-sasl.js";
 import { Context } from "./context.js";
 import { sendQueryMessage } from "./query.js";
+import { createParseMessage, createSyncMessage } from "./extended-query.js";
+import { ObjectId } from "./constants.js";
 
 export enum ServerAuthenticationMessageType {
   AuthenticationOk = 0,
@@ -149,10 +151,16 @@ function handleAuthenticationOkMessage(
 ) {
   console.log("Authentication successful");
   context.authentication.isConnected = true;
-  sendQueryMessage(
-    "SELECT * FROM public.users; SELECT * FROM public.products;",
-    context
-  );
+  const msg = createParseMessage({
+    query: "SELECT 1",
+    paramTypes: [],
+  });
+  context.client.write(msg);
+  context.client.write(createSyncMessage());
+  // sendQueryMessage(
+  //   "SELECT * FROM public.users; SELECT * FROM public.products;",
+  //   context
+  // );
 }
 
 function handleAuthenticationSASLMessage(

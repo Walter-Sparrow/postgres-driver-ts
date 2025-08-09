@@ -23,6 +23,11 @@ export class Writer {
     this.offset += 1;
   }
 
+  writeUInt16BE(data: number) {
+    this.buffer.writeUInt16BE(data, this.offset);
+    this.offset += 2;
+  }
+
   writeUInt32BE(data: number) {
     this.buffer.writeUInt32BE(data, this.offset);
     this.offset += 4;

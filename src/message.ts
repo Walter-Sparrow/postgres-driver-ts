@@ -25,7 +25,9 @@ export enum BackendMessageType {
 }
 
 export enum FrontendMessageType {
+  Parse = 80, // 'P'
   Query = 81, // 'Q'
+  Sync = 83, // 'S'
   Password = 112, // 'p'
 }
 
@@ -45,11 +47,12 @@ export function parsePgMessage(raw: Buffer): PgMessage {
   return { type, length: length + 1, data };
 }
 
-export function createPgMessage(type: MessageType, data: Buffer): Buffer {
-  const writer = new Writer(data.length + 1 /* type */ + 4 /* length */);
+export function createPgMessage(type: MessageType, data?: Buffer): Buffer {
+  const dataLength = data ? data.length : 0;
+  const writer = new Writer(dataLength + 1 /* type */ + 4 /* length */);
   writer.writeUInt8(type);
-  writer.writeUInt32BE(data.length + 4 /* length */);
-  writer.write(data);
+  writer.writeUInt32BE(dataLength + 4 /* length */);
+  if (data) writer.write(data);
   return writer.getBuffer();
 }
 
