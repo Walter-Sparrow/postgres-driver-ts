@@ -10,6 +10,7 @@ import {
 import { Context } from "./context.js";
 import {
   createBindMessage,
+  createDescribeMessage,
   createExecuteMessage,
   createParseMessage,
   createSyncMessage,
@@ -168,6 +169,9 @@ function handleAuthenticationOkMessage(
     resultFormatCodes: [],
   });
   context.client.write(bindMsg);
+
+  const describeMsg = createDescribeMessage({ subject: "portal" });
+  context.client.write(describeMsg);
 
   const executeMsg = createExecuteMessage({ maxRows: 1 });
   context.client.write(executeMsg);

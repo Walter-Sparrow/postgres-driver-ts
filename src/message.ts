@@ -34,6 +34,7 @@ export enum BackendMessageType {
 
 export enum FrontendMessageType {
   Bind = 66, // 'B'
+  Describe = 68, // 'D'
   Execute = 69, // 'E'
   Parse = 80, // 'P'
   Query = 81, // 'Q'

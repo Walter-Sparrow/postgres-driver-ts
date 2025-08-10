@@ -26,10 +26,7 @@ export function createParseMessage(options: ParseOptions): Buffer {
   return createPgMessage(FrontendMessageType.Parse, writer.getBuffer());
 }
 
-export function handleParseCompleteMessage(
-  _message: PgMessage,
-  _context: Context
-) {
+export function handleParseCompleteMessage(_msg: PgMessage, _context: Context) {
   console.log("Parse complete");
 }
 
@@ -95,6 +92,24 @@ export function handleBindCompleteMessage(
   console.log("Bind complete");
 }
 
+export interface DescribeOptions {
+  subject: "portal" | "statement";
+  name?: string | null;
+}
+
+export function createDescribeMessage(options: DescribeOptions): Buffer {
+  const nameBuf = Buffer.from((options.name || "") + "\0", "utf8");
+
+  const length = 1 /* subject */ + nameBuf.byteLength;
+  const writer = new Writer(length);
+  writer.writeUInt8(
+    options.subject === "portal" ? "P".charCodeAt(0) : "S".charCodeAt(0)
+  );
+  writer.write(nameBuf);
+
+  return createPgMessage(FrontendMessageType.Describe, writer.getBuffer());
+}
+
 export interface ExecuteOptions {
   portalName?: string | null;
   maxRows?: number; // 0 is a default and will act as no limit
@@ -113,7 +128,7 @@ export function createExecuteMessage(options: ExecuteOptions = {}): Buffer {
 }
 
 export function handlePortalSuspendedMessage(
-  _message: PgMessage,
+  _msg: PgMessage,
   _context: Context
 ) {
   console.log("Portal suspended, issue another execute");
