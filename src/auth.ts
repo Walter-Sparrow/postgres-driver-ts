@@ -8,8 +8,12 @@ import {
   parseSASLFinalMessage,
 } from "./auth-sasl.js";
 import { Context } from "./context.js";
-import { sendQueryMessage } from "./query.js";
-import { createParseMessage, createSyncMessage } from "./extended-query.js";
+import {
+  createBindMessage,
+  createExecuteMessage,
+  createParseMessage,
+  createSyncMessage,
+} from "./extended-query.js";
 import { ObjectId } from "./constants.js";
 
 export enum ServerAuthenticationMessageType {
@@ -151,12 +155,27 @@ function handleAuthenticationOkMessage(
 ) {
   console.log("Authentication successful");
   context.authentication.isConnected = true;
-  const msg = createParseMessage({
-    query: "SELECT 1",
-    paramTypes: [],
+
+  const parseMsg = createParseMessage({
+    query: "select id, name from public.users where age > $1",
+    paramTypes: [ObjectId.Int2],
   });
-  context.client.write(msg);
-  context.client.write(createSyncMessage());
+  context.client.write(parseMsg);
+
+  const bindMsg = createBindMessage({
+    paramFormatCodes: [],
+    paramValues: [Buffer.from("20", "utf8")],
+    resultFormatCodes: [],
+  });
+  context.client.write(bindMsg);
+
+  const executeMsg = createExecuteMessage({ maxRows: 1 });
+  context.client.write(executeMsg);
+  context.client.write(executeMsg);
+  context.client.write(executeMsg);
+
+  const syncMsg = createSyncMessage();
+  context.client.write(syncMsg);
   // sendQueryMessage(
   //   "SELECT * FROM public.users; SELECT * FROM public.products;",
   //   context

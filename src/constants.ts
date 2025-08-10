@@ -19,3 +19,8 @@ export enum ObjectId {
   Time = 1083,
   Timestamp = 1114,
 }
+
+export enum FormatCode {
+  Text = 0,
+  Binary = 1,
+}

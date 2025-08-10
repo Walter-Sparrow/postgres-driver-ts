@@ -12,8 +12,15 @@ import {
   handleRowDescriptionMessage,
 } from "./row-description.js";
 import { handleCommandCompleteMessage } from "./command-complete.js";
+import {
+  handleBindCompleteMessage,
+  handleParseCompleteMessage,
+  handlePortalSuspendedMessage,
+} from "./extended-query.js";
 
 export enum BackendMessageType {
+  ParseComplete = 49, // '1'
+  BindComplete = 50, // '2'
   CommandComplete = 67, // 'C'
   DataRow = 68, // 'D'
   ErrorResponse = 69, // 'E'
@@ -22,9 +29,12 @@ export enum BackendMessageType {
   ParameterStatus = 83, // 'S'
   RowDescription = 84, // 'T'
   ReadyForQuery = 90, // 'Z'
+  PortalSuspended = 115, // 's'
 }
 
 export enum FrontendMessageType {
+  Bind = 66, // 'B'
+  Execute = 69, // 'E'
   Parse = 80, // 'P'
   Query = 81, // 'Q'
   Sync = 83, // 'S'
@@ -102,11 +112,20 @@ export function handlePgMessages(data: Buffer, context: Context) {
       case BackendMessageType.ReadyForQuery:
         handleReadyForQueryMessage(message, context);
         break;
+      case BackendMessageType.ParseComplete:
+        handleParseCompleteMessage(message, context);
+        break;
+      case BackendMessageType.BindComplete:
+        handleBindCompleteMessage(message, context);
+        break;
       case BackendMessageType.RowDescription:
         handleRowDescriptionMessage(message, context);
         break;
       case BackendMessageType.DataRow:
         handleDataRowMessage(message, context);
+        break;
+      case BackendMessageType.PortalSuspended:
+        handlePortalSuspendedMessage(message, context);
         break;
       case BackendMessageType.CommandComplete:
         handleCommandCompleteMessage(message, context);

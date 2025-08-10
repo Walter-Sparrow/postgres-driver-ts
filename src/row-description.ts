@@ -1,11 +1,7 @@
+import { FormatCode } from "./constants.js";
 import { Context } from "./context.js";
 import { PgMessage } from "./message.js";
 import { Reader } from "./reader.js";
-
-export enum FormatCode {
-  Text = 0,
-  Binary = 1,
-}
 
 export interface ColumnDescription {
   fieldName: string;
