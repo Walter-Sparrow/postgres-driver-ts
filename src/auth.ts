@@ -155,35 +155,7 @@ function handleAuthenticationOkMessage(
   context: Context
 ) {
   console.log("Authentication successful");
-  context.authentication.isConnected = true;
-
-  const parseMsg = createParseMessage({
-    query: "select id, name from public.users where age > $1",
-    paramTypes: [ObjectId.Int2],
-  });
-  context.client.write(parseMsg);
-
-  const bindMsg = createBindMessage({
-    paramFormatCodes: [],
-    paramValues: [Buffer.from("20", "utf8")],
-    resultFormatCodes: [],
-  });
-  context.client.write(bindMsg);
-
-  const describeMsg = createDescribeMessage({ subject: "portal" });
-  context.client.write(describeMsg);
-
-  const executeMsg = createExecuteMessage({ maxRows: 1 });
-  context.client.write(executeMsg);
-  context.client.write(executeMsg);
-  context.client.write(executeMsg);
-
-  const syncMsg = createSyncMessage();
-  context.client.write(syncMsg);
-  // sendQueryMessage(
-  //   "SELECT * FROM public.users; SELECT * FROM public.products;",
-  //   context
-  // );
+  context.eventEmitter.emit("connected");
 }
 
 function handleAuthenticationSASLMessage(

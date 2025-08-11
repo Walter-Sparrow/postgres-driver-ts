@@ -1,5 +1,6 @@
 import { Socket } from "node:net";
 import { ColumnDescription, RowValue } from "./row-description";
+import EventEmitter from "node:events";
 
 export enum ReadyForQueryStatus {
   Idle = "I",
@@ -9,6 +10,7 @@ export enum ReadyForQueryStatus {
 
 export interface Context {
   client: Socket;
+  eventEmitter: EventEmitter;
 
   authentication: {
     user: string;
@@ -18,8 +20,6 @@ export interface Context {
     clientNonce?: string | null;
     clientFirstMessageBare?: Buffer | null;
     serverSignature?: Buffer | null;
-
-    isConnected: boolean;
   };
 
   sessionParameters: Record<string, string>;
@@ -30,7 +30,7 @@ export interface Context {
   readyForQueryStatus: ReadyForQueryStatus;
 
   currentQuery: {
-    columnDescriptions: ColumnDescription[];
+    columns: ColumnDescription[];
     rows: RowValue[][];
     commandTag: string;
   };

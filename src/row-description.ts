@@ -28,7 +28,7 @@ export function handleRowDescriptionMessage(
     const typeModifier = reader.readUInt32BE();
     const format = reader.readUInt16BE();
 
-    context.currentQuery.columnDescriptions.push({
+    context.currentQuery.columns.push({
       fieldName,
       tableId,
       columnId,

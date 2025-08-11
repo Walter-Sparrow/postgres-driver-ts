@@ -16,7 +16,7 @@ export interface Error {
 
 export function handleErrorResponseMessage(
   message: PgMessage,
-  _context: Context
+  context: Context
 ) {
   const errors: Error[] = [];
   const reader = new Reader(message.data);
@@ -28,5 +28,6 @@ export function handleErrorResponseMessage(
     code = reader.readUInt8();
   } while (code !== 0);
 
+  context.eventEmitter.emit("errorResponse", errors);
   console.error("Error response", errors);
 }

@@ -1,5 +1,6 @@
 import { Context } from "./context.js";
 import { PgMessage } from "./message.js";
+import { SimpleQueryResult } from "./query.js";
 import { Reader } from "./reader.js";
 
 export function handleCommandCompleteMessage(
@@ -10,10 +11,15 @@ export function handleCommandCompleteMessage(
   const commandTag = reader.readNullTerminatedString().slice(0, -1);
   context.currentQuery.commandTag = commandTag;
 
+  const result: SimpleQueryResult = {
+    commandTag,
+    columns: context.currentQuery.columns,
+    rows: context.currentQuery.rows,
+  };
+  context.eventEmitter.emit("commandComplete", result);
+
   console.log("Command complete:", commandTag);
-  const columns = context.currentQuery.columnDescriptions.map(
-    (c) => c.fieldName
-  );
+  const columns = context.currentQuery.columns.map((c) => c.fieldName);
   const table = context.currentQuery.rows.map((row) => {
     const obj: Record<string, string | null> = {};
     row.forEach((val, i) => {
@@ -22,5 +28,5 @@ export function handleCommandCompleteMessage(
     return obj;
   });
   console.table(table);
-  context.currentQuery = { columnDescriptions: [], rows: [], commandTag: "" };
+  context.currentQuery = { columns: [], rows: [], commandTag: "" };
 }
